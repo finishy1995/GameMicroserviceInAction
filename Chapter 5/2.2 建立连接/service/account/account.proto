@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package account;
+option go_package = "./account";
+
+message GetOrCreateAccountRequest {
+  // 用户账号 ID
+  string id = 1;
+  // 用户账号平台
+  string platform = 2;
+}
+
+message AccountInfo {
+  string userId = 1;
+}
+
+message GetOrCreateAccountResponse {
+  // 错误码
+  uint32 errorCode = 1;
+  // 是否是新创建的账号
+  bool isCreated = 2;
+  // 账号具体信息
+  AccountInfo account = 3;
+}
+
+service Account {
+  // 获取或新账号创建
+  rpc getOrCreateAccount(GetOrCreateAccountRequest) returns(GetOrCreateAccountResponse);
+}
