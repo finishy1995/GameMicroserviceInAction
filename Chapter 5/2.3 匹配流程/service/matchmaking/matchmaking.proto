@@ -1,0 +1,52 @@
+syntax = "proto3";
+
+package matchmaking;
+option go_package = "./matchmaking";
+
+message StartRequest {
+  // 匹配类型
+  int32 matchType = 1;
+}
+
+message StartResponse {
+  // 状态码
+  int32 code = 1;
+}
+
+message CancelRequest {
+}
+
+message CancelResponse {
+  // 状态码
+  int32 code = 1;
+}
+
+message ResultRequest {
+}
+
+message MatchResultDetails {
+  // 匹配类型
+  int32 matchType = 1;
+  // 对战服务器连接方式
+  string endpoint = 2;
+  // 对战服务器连接密钥
+  string secret = 3;
+}
+
+message ResultResponse {
+  // 状态码
+  int32 code = 1;
+  // 匹配结果
+  int32 result = 2;
+  // 结果细节
+  MatchResultDetails detail = 3;
+}
+
+service Matchmaking {
+  // 开始匹配
+  rpc start(StartRequest) returns(StartResponse);
+  // 取消匹配
+  rpc cancel(CancelRequest) returns(CancelResponse);
+  // 获取匹配结果
+  rpc result(ResultRequest) returns(ResultResponse);
+}

@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package gate;
+option go_package = "./gate";
+
+message ClientRequest {
+  int32 id = 1;
+  string method = 2;
+  bytes content = 3;
+}
+
+message ClientResponse {
+  int32 id = 1;
+  string method = 2;
+  bytes content = 3;
+  int32 code = 4;
+}
+
+message GetUserNumberRequest {
+}
+
+message GetUserNumberResponse {
+  int32 number = 1;
+}
+
+service Gate {
+  // 获取玩家数
+  rpc getUserNumber(GetUserNumberRequest) returns(GetUserNumberResponse);
+}
