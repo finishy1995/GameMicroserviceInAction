@@ -6,15 +6,17 @@
 package logic
 
 import (
-    "ProjectX/library/log"
-    "ProjectX/service/matchmaking/internal/svc"
-    "ProjectX/service/matchmaking/pb/matchmaking"
-    "context"
+	"ProjectX/base"
+	"ProjectX/library/contextx"
+	"ProjectX/library/log"
+	"ProjectX/service/matchmaking/internal/svc"
+	"ProjectX/service/matchmaking/pb/matchmaking"
+	"context"
 )
 
 type CancelLogic struct {
-	ctx         context.Context
-	svcCtx      *svc.ServiceContext
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
 	log.Logger
 }
 
@@ -26,8 +28,17 @@ func NewCancelLogic(ctx context.Context, svcCtx *svc.ServiceContext) *CancelLogi
 	}
 }
 
-func (l *CancelLogic) Cancel(in *matchmaking.CancelRequest) (*matchmaking.CancelResponse, error) {
-	// TODO: logic write here
+func (l *CancelLogic) Cancel(_ *matchmaking.CancelRequest) (*matchmaking.CancelResponse, error) {
+	resp := &matchmaking.CancelResponse{
+		Code: base.ErrorCodeOK,
+	}
 
-	return &matchmaking.CancelResponse{}, nil
+	userId := contextx.GetValueFromContext(l.ctx, base.UserId)
+	if userId == "" {
+		resp.Code = base.ErrorCodeInternalError
+		return resp, nil
+	}
+	l.svcCtx.Pool.CancelUser(userId)
+
+	return resp, nil
 }

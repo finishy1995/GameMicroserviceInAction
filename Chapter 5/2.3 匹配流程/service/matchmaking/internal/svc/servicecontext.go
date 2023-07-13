@@ -5,15 +5,19 @@
 
 package svc
 
-import "ProjectX/service/matchmaking/internal/config"
+import (
+	"ProjectX/service/matchmaking/internal/config"
+	"ProjectX/service/matchmaking/internal/pool"
+)
 
 type ServiceContext struct {
 	Config config.Config
+	Pool   *pool.Pool
 }
 
 func NewServiceContext(c config.Config) *ServiceContext {
-	// TODO: 连接数据库，创建协程，设置缓冲等
 	return &ServiceContext{
 		Config: c,
+		Pool:   pool.NewPool(),
 	}
 }

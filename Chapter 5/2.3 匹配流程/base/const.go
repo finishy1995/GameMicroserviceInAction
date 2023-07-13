@@ -6,3 +6,7 @@ const (
 	RabbitMQ    = "rabbit"
 	InterThread = "inter"
 )
+
+const (
+	UserId = "userId"
+)

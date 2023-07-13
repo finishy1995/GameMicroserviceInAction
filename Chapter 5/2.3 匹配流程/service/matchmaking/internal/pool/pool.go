@@ -7,19 +7,28 @@ import (
 	"time"
 )
 
+type action struct {
+	userId   string
+	ticketId string
+	action   Action
+}
+
 // Pool 匹配池
 type Pool struct {
-	ticketIdInfoMapping map[string]*info  // ticketId -> info
-	userIdTicketMapping map[string]string // userId -> ticketId
-	preparingMapping    map[string]*info  // ticketId -> info
-	preparingMutex      sync.Mutex        // preparingMapping 互斥锁
+	sync.RWMutex
+	ticketIdInfoMapping map[string]*Info  // ticketId -> info 正在匹配中的 ticket
+	userIdTicketMapping map[string]string // userId -> ticketId 用户与 ticket 的映射
+	backupMapping       map[string]*Info  // ticketId -> info 备份的 ticket
+	preparingAction     chan *action      // 准备中的动作
 	closeSig            chan bool         // 关闭信号
 }
 
 func NewPool() *Pool {
 	p := &Pool{
-		ticketIdInfoMapping: make(map[string]*info),
-		userIdTicketMapping: make(map[string]string),
+		ticketIdInfoMapping: make(map[string]*Info, 0),
+		userIdTicketMapping: make(map[string]string, 0),
+		backupMapping:       make(map[string]*Info, 0),
+		preparingAction:     make(chan *action, 1000),
 		closeSig:            make(chan bool, 2),
 	}
 	err := routine.Run(false, p.run)
@@ -43,20 +52,33 @@ func (p *Pool) run() {
 }
 
 func (p *Pool) match() {
-	// 将 preparingMapping 中候补的人员加入匹配池 ticketIdInfoMapping
-	p.preparingMutex.Lock()
-	for ticketId, info := range p.preparingMapping {
-		if info.status != StatusPreparing {
+	p.Lock()
+	// 维护 backupMapping，将其中超时的人员删除
+	now := time.Now().Unix()
+	for ticketId, info := range p.backupMapping {
+		if info.endTime == 0 {
 			continue
 		}
-
-		info.status = StatusMatching
-		p.ticketIdInfoMapping[ticketId] = info
+		if now-info.endTime > 900 {
+			delete(p.backupMapping, ticketId)
+			delete(p.userIdTicketMapping, info.userId)
+		}
 	}
-	p.preparingMapping = make(map[string]*info, 0)
-	p.preparingMutex.Unlock()
 
-	// TODO: 匹配逻辑，根据玩家信息按需要匹配
+	// 将 preparingAction 中的动作一一执行
+	for a := range p.preparingAction {
+		switch a.action {
+		case ActionAdd:
+			p.addUser(a.userId, a.ticketId)
+			break
+		case ActionCancel:
+			p.cancelUser(a.userId)
+			break
+		}
+	}
+	p.Unlock()
+
+	// TODO: 匹配逻辑，根据玩家信息按需要匹配；添加超时逻辑
 	// 临时逻辑是，只要有两个人匹配，就完成匹配
 	for {
 		if len(p.ticketIdInfoMapping) < 2 {
@@ -91,33 +113,64 @@ func (p *Pool) Close() {
 
 // AddUser 添加用户到匹配池
 func (p *Pool) AddUser(userId string) string {
-	p.preparingMutex.Lock()
-	defer p.preparingMutex.Unlock()
-
 	// 如果用户已经在匹配池中，直接返回 ticketId
+	p.RLock()
 	if ticketId, ok := p.userIdTicketMapping[userId]; ok {
-		return ticketId
+		if p.backupMapping[ticketId].status == StatusPreparing || p.backupMapping[ticketId].status == StatusMatching {
+			return ticketId
+		}
 	}
+	p.RUnlock()
 
 	// 创建匹配信息
 	ticketId := fmt.Sprintf("%s_%d", userId, time.Now().Unix())
-	info := &info{
-		ticketId:    ticketId,
-		createdTime: time.Now().Unix(),
-		status:      StatusPreparing,
+
+	p.preparingAction <- &action{
+		userId:   userId,
+		ticketId: ticketId,
+		action:   ActionAdd,
 	}
-	p.preparingMapping[ticketId] = info
-	p.userIdTicketMapping[userId] = ticketId
+
 	return ticketId
 }
 
-// RemoveUser 从匹配池中移除用户
-func (p *Pool) RemoveUser(userId string) {
-	if ticketId, ok := p.userIdTicketMapping[userId]; ok {
-		p.preparingMutex.Lock()
-		defer p.preparingMutex.Unlock()
+// CancelUser 从匹配池中移除用户
+func (p *Pool) CancelUser(userId string) {
+	p.preparingAction <- &action{
+		userId: userId,
+		action: ActionCancel,
+	}
+}
 
-	} else {
-		return
+func (p *Pool) GetInfo(userId string) *Info {
+	p.RLock()
+	defer p.RUnlock()
+	if ticketId, ok := p.userIdTicketMapping[userId]; ok {
+		if info, ok := p.backupMapping[ticketId]; ok {
+			return info
+		}
+	}
+	return nil
+}
+
+func (p *Pool) addUser(userId string, ticketId string) {
+	info := &Info{
+		ticketId:    ticketId,
+		userId:      userId,
+		createdTime: time.Now().Unix(),
+		status:      StatusPreparing,
+	}
+	p.ticketIdInfoMapping[ticketId] = info
+	p.userIdTicketMapping[userId] = ticketId
+	p.backupMapping[ticketId] = info
+}
+
+func (p *Pool) cancelUser(userId string) {
+	if ticketId, ok := p.userIdTicketMapping[userId]; ok {
+		if info, ok := p.backupMapping[ticketId]; ok {
+			info.status = StatusCanceled
+			info.endTime = time.Now().Unix()
+		}
+		delete(p.ticketIdInfoMapping, ticketId)
 	}
 }

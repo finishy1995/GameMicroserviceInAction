@@ -6,15 +6,17 @@
 package logic
 
 import (
-    "ProjectX/library/log"
-    "ProjectX/service/matchmaking/internal/svc"
-    "ProjectX/service/matchmaking/pb/matchmaking"
-    "context"
+	"ProjectX/base"
+	"ProjectX/library/contextx"
+	"ProjectX/library/log"
+	"ProjectX/service/matchmaking/internal/svc"
+	"ProjectX/service/matchmaking/pb/matchmaking"
+	"context"
 )
 
 type ResultLogic struct {
-	ctx         context.Context
-	svcCtx      *svc.ServiceContext
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
 	log.Logger
 }
 
@@ -26,8 +28,23 @@ func NewResultLogic(ctx context.Context, svcCtx *svc.ServiceContext) *ResultLogi
 	}
 }
 
-func (l *ResultLogic) Result(in *matchmaking.ResultRequest) (*matchmaking.ResultResponse, error) {
-	// TODO: logic write here
+func (l *ResultLogic) Result(_ *matchmaking.ResultRequest) (*matchmaking.ResultResponse, error) {
+	resp := &matchmaking.ResultResponse{
+		Code: base.ErrorCodeOK,
+	}
 
-	return &matchmaking.ResultResponse{}, nil
+	userId := contextx.GetValueFromContext(l.ctx, base.UserId)
+	if userId == "" {
+		resp.Code = base.ErrorCodeInternalError
+		return resp, nil
+	}
+	info := l.svcCtx.Pool.GetInfo(userId)
+	status, _ := info.Output()
+	resp.Result = status
+	resp.Detail = &matchmaking.MatchResultDetails{
+		Endpoint: "127.0.0.1:10010",
+		Secret:   "hello",
+	}
+
+	return resp, nil
 }

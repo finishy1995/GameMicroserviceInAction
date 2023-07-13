@@ -5,6 +5,8 @@ const (
 
 	ErrorCodeServiceBusy = 100
 
+	ErrorCodeInternalError = 101
+
 	// --- Account Error --- //
 
 	ErrorCodeAccountIdPasswordWrong int32 = 1000

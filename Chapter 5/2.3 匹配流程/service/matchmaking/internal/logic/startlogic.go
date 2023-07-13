@@ -6,15 +6,17 @@
 package logic
 
 import (
-    "ProjectX/library/log"
-    "ProjectX/service/matchmaking/internal/svc"
-    "ProjectX/service/matchmaking/pb/matchmaking"
-    "context"
+	"ProjectX/base"
+	"ProjectX/library/contextx"
+	"ProjectX/library/log"
+	"ProjectX/service/matchmaking/internal/svc"
+	"ProjectX/service/matchmaking/pb/matchmaking"
+	"context"
 )
 
 type StartLogic struct {
-	ctx         context.Context
-	svcCtx      *svc.ServiceContext
+	ctx    context.Context
+	svcCtx *svc.ServiceContext
 	log.Logger
 }
 
@@ -26,8 +28,20 @@ func NewStartLogic(ctx context.Context, svcCtx *svc.ServiceContext) *StartLogic 
 	}
 }
 
-func (l *StartLogic) Start(in *matchmaking.StartRequest) (*matchmaking.StartResponse, error) {
-	// TODO: logic write here
+func (l *StartLogic) Start(_ *matchmaking.StartRequest) (*matchmaking.StartResponse, error) {
+	resp := &matchmaking.StartResponse{
+		Code: base.ErrorCodeOK,
+	}
 
-	return &matchmaking.StartResponse{}, nil
+	userId := contextx.GetValueFromContext(l.ctx, base.UserId)
+	if userId == "" {
+		resp.Code = base.ErrorCodeInternalError
+		return resp, nil
+	}
+	ticketId := l.svcCtx.Pool.AddUser(userId)
+	if ticketId == "" {
+		resp.Code = base.ErrorCodeServiceBusy
+	}
+
+	return resp, nil
 }

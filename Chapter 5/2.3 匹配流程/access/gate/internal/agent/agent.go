@@ -3,12 +3,12 @@ package agent
 import (
 	"ProjectX/access/gate/pb/gate"
 	"ProjectX/base"
+	"ProjectX/library/contextx"
 	"ProjectX/library/log"
 	"ProjectX/library/network/core"
 	"ProjectX/library/routine"
 	"context"
 	"github.com/golang/protobuf/proto"
-	"github.com/zeromicro/go-zero/core/timex"
 	"strings"
 	"sync"
 	"time"
@@ -176,13 +176,13 @@ func (agt *Agent) run() {
 			case <-agt.closeSig:
 				return
 			case t := <-agt.rpcTask:
-				startTime := timex.Now()
+				startTime := time.Now()
 				resp := &gate.ClientResponse{
 					Id:     t.id,
 					Method: t.method,
 				}
 
-				ctx, cancel := context.WithTimeout(context.Background(), RpcTimeout)
+				ctx, cancel := context.WithTimeout(contextx.NewContextWithValue(base.UserId, agt.userId), RpcTimeout)
 				methodResp, err := Invoke(GRPC, ctx, t.method, t.content)
 				cancel()
 
@@ -197,7 +197,7 @@ func (agt *Agent) run() {
 				}
 
 				// 这里打印 Slow 日志，监控每个 rpc 的调用时间，提醒开发者优化（根据要求，20ms 或 40ms）
-				duration := timex.Since(startTime)
+				duration := time.Since(startTime)
 				if duration > SlowThreshold {
 					log.Warning("Gate slow call, userId : %s, method : %s, content: %v", agt.userId, resp.Method, t.content)
 				}
