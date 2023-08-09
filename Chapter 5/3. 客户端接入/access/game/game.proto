@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+package game;
+option go_package = "./game";
+
+message Action {
+  // 动作逻辑帧 id
+  int32 actionFrameId = 1;
+  // 动作类型
+  int32 actionType = 2;
+  // 动作参数
+  string actionParam = 3;
+}
+
+message SetGameEnvironmentRequest {
+  // 游戏密钥
+  string secret = 1;
+  // 用户 id
+  repeated string userId = 2;
+  // 匹配类型
+//  int32 matchType = 3;
+}
+
+message SetGameEnvironmentResponse {
+  // 状态码
+  int32 code = 1;
+  // 端口
+  int32 port = 2;
+}
+
+service Game {
+  // 设置游戏基本环境
+  rpc setGameEnvironment(SetGameEnvironmentRequest) returns(SetGameEnvironmentResponse);
+}
