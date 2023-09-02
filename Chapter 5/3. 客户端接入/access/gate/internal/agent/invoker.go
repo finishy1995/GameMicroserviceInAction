@@ -51,6 +51,10 @@ func (gs *grpcService) Invoke(ctx context.Context, method string, content []byte
 		msg = &matchmaking.StartRequest{}
 		repMsg = &matchmaking.StartResponse{}
 		break
+	case matchmaking.Matchmaking_Result_FullMethodName:
+		msg = &matchmaking.ResultRequest{}
+		repMsg = &matchmaking.ResultResponse{}
+		break
 	default:
 		return nil, fmt.Errorf("unsupported method: %s", method)
 	}

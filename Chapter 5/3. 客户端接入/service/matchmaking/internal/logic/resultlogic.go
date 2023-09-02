@@ -9,6 +9,7 @@ import (
 	"ProjectX/base"
 	"ProjectX/library/contextx"
 	"ProjectX/library/log"
+	"ProjectX/service/matchmaking/internal/pool"
 	"ProjectX/service/matchmaking/internal/svc"
 	"ProjectX/service/matchmaking/pb/matchmaking"
 	"context"
@@ -39,11 +40,17 @@ func (l *ResultLogic) Result(_ *matchmaking.ResultRequest) (*matchmaking.ResultR
 		return resp, nil
 	}
 	info := l.svcCtx.Pool.GetInfo(userId)
+	if info == nil {
+		resp.Code = base.ErrorCodeInternalError
+		return resp, nil
+	}
 	status, _ := info.Output()
 	resp.Result = status
-	resp.Detail = &matchmaking.MatchResultDetails{
-		Endpoint: "127.0.0.1:10010",
-		Secret:   "hello",
+	if status == int32(pool.StatusMatched) {
+		resp.Detail = &matchmaking.MatchResultDetails{
+			Endpoint: "127.0.0.1:10010",
+			Secret:   "hello",
+		}
 	}
 
 	return resp, nil

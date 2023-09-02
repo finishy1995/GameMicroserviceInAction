@@ -66,7 +66,9 @@ func (p *Pool) match() {
 	}
 
 	// 将 preparingAction 中的动作一一执行
-	for a := range p.preparingAction {
+	length := len(p.preparingAction)
+	for i := 0; i < length; i++ {
+		a := <-p.preparingAction
 		switch a.action {
 		case ActionAdd:
 			p.addUser(a.userId, a.ticketId)
